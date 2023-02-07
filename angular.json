@@ -3,5 +3,37 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-  }
+    "ng-lazy-images": {
+      "projectType": "library",
+      "root": "projects/ng-lazy-images",
+      "sourceRoot": "projects/ng-lazy-images/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/ng-lazy-images/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ng-lazy-images/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ng-lazy-images/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "main": "projects/ng-lazy-images/src/test.ts",
+            "tsConfig": "projects/ng-lazy-images/tsconfig.spec.json",
+            "karmaConfig": "projects/ng-lazy-images/karma.conf.js"
+          }
+        }
+      }
+    }
+  },
+  "defaultProject": "ng-lazy-images"
 }

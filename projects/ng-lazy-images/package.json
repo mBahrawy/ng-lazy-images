@@ -1,0 +1,17 @@
+{
+  "name": "ng-lazy-images",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/common": "^13.3.0",
+    "@angular/core": "^13.3.0"
+  },
+  "description": "This package is used to genrate a lear on scroll lazy images this thumb and fallback image.",
+  "author": {
+    "name": "Eng. Mohamed Bahrawy",
+    "email": "bahrawy.dev@gmail.com",
+    "url": "https://www.linkedin.com/in/mbahrawy"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  }
+}
