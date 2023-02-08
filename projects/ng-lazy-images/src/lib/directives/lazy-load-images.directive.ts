@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 
 @Directive({
-  selector: 'img[lazy-load-image]',
+  selector: 'img[ng-lazy-images]',
   host: {
     '(error)': 'errorHandler()',
     '(load)': 'imageLoadedCallback()',

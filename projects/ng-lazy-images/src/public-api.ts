@@ -3,3 +3,5 @@
  */
 
 export * from './lib/ng-lazy-images.module';
+export * from './lib/directives/lazy-load-images.directive';
+
