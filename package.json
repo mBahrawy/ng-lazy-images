@@ -12,7 +12,7 @@
     "type": "git",
     "url": "https://github.com/mBahrawy/ng-lazy-images"
   },
-  "private": false,
+  "private": true,
   "dependencies": {
     "@angular/animations": "~13.3.0",
     "@angular/common": "~13.3.0",

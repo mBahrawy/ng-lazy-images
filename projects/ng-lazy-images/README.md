@@ -1,24 +1,86 @@
-# NgLazyImages
+# Angular lazy load images
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 13.3.0.
+A very efficient image lazy loading tool based on user scroll.
+for blazing-fast page loading, with High-resolution images.
 
-## Code scaffolding
+**Please note that this version is still under development**
+[Github repo](https://github.com/mBahrawy/ng-lazy-images)
 
-Run `ng generate component component-name --project ng-lazy-images` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project ng-lazy-images`.
-> Note: Don't forget to add `--project ng-lazy-images` or else it will be added to the default project in your `angular.json` file. 
 
-## Build
+## Features
+1. Lazy load image on scroll
+2. Ability to use low-resolution image as a thumb, then it will be replaced with the HQ when loaded.
+3. Ability to add a fullback image, It will be loaded when the image URL is broken or not found.
+4. Ability to add loading a smooth loading effect
+5. Toggle debugging 
 
-Run `ng build ng-lazy-images` to build the project. The build artifacts will be stored in the `dist/` directory.
 
-## Publishing
+## Setup
 
-After building your library with `ng build ng-lazy-images`, go to the dist folder `cd dist/ng-lazy-images` and run `npm publish`.
+1. run: `npm i ng-lazy-images`
+2. import `NgLazyImagesModule` in your app.module.ts
+```
+import { NgLazyImagesModule } from 'ng-lazy-images'
+@NgModule({
+  declarations: [
+    AppComponent,
+  ],
+  imports: [
+    BrowserModule,
+    NgLazyImagesModule
+  ],
+  providers: [],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
 
-## Running unit tests
+3. Use the dicretive `ng-lazy-images` inside your<img> to enable this package.
+```
+    <img ng-lazy-images [lazySrc]="YOUR_HQ_IMG_URL"/>
+```
 
-Run `ng test ng-lazy-images` to execute the unit tests via [Karma](https://karma-runner.github.io).
+4. Adding needed styles inside your global styles file
+```
+img[ng-lazy-images] {
+  &:not(.image-loaded, .thumb-loaded, .image-failed, .no-loader) {
+    background-color: #000;
+    animation-name: animation;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-play-state: running;
+  }
+}
 
-## Further help
+@-webkit-keyframes animation {
+  0% {
+    background-color: rgb(190, 190, 190);
+  }
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+  50.0% {
+    background-color: #ddd;
+  }
+
+  100.0% {
+    background-color: rgb(190, 190, 190);
+  }
+}
+
+@keyframes animation {
+  0% {
+    background-color: rgb(190, 190, 190);
+  }
+
+  50.0% {
+    background-color: #ddd;
+  }
+
+  100.0% {
+    background-color: rgb(190, 190, 190);
+  }
+}
+
+``` 
+
+5. Enjoy lazy load images, and high-speed performance.
