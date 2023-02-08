@@ -8,20 +8,19 @@ for blazing-fast page loading, with High-resolution images.
 
 
 ## Features
-1 - Lazy load image on scroll
-2 - Ability to use low-resolution image as a thumb, then it will be replaced with the HQ when loaded.
-3 - Ability to add a fullback image, It will be loaded when the image URL is broken or not found.
-4 - Ability to add loading a smooth loading effect
-5- Toggle debugging 
+1. Lazy load image on scroll
+2. Ability to use low-resolution image as a thumb, then it will be replaced with the HQ when loaded.
+3. Ability to add a fullback image, It will be loaded when the image URL is broken or not found.
+4. Ability to add loading a smooth loading effect
+5. Toggle debugging 
 
 
 ## Setup
 
-1 - run: `npm i ng-lazy-images`
-2 - import `NgLazyImagesModule` in your app.module.ts
+1. run: `npm i ng-lazy-images`
+2. import `NgLazyImagesModule` in your app.module.ts
 ```
 import { NgLazyImagesModule } from 'ng-lazy-images'
-
 @NgModule({
   declarations: [
     AppComponent,
@@ -36,13 +35,12 @@ import { NgLazyImagesModule } from 'ng-lazy-images'
 export class AppModule { }
 ```
 
-3 - Use the dicretive `ng-lazy-images` inside your<img> to enable this package.
+3. Use the dicretive `ng-lazy-images` inside your<img> to enable this package.
 ```
     <img ng-lazy-images [lazySrc]="YOUR_HQ_IMG_URL"/>
-
 ```
 
-4 - Adding needed styles inside your global styles file
+4. Adding needed styles inside your global styles file
 ```
 img[ng-lazy-images] {
   &:not(.image-loaded, .thumb-loaded, .image-failed, .no-loader) {
@@ -85,4 +83,4 @@ img[ng-lazy-images] {
 
 ``` 
 
-5 - Enjoy lazy load images, and high-speed performance.
+5. Enjoy lazy load images, and high-speed performance.
