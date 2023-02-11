@@ -23,9 +23,11 @@ export class LazyLoadImagesDirective implements AfterViewInit, OnInit {
   @Input() lazySrc!: string;
   @Input() errorLazySrc!: string;
   @Input() thumbSrc!: string;
-  @Input() thumbIdentifier!: string;
   @Input() debug!: boolean;
   @Input() hasLoader!: boolean;
+  @Input() disableCaching!: boolean;
+
+  thumbIdentifier: string = '__this_is_the_thumb';
 
   image!: string;
   isThumbLoaded: boolean = false;
@@ -46,8 +48,15 @@ export class LazyLoadImagesDirective implements AfterViewInit, OnInit {
   ) {}
 
   ngOnInit(): void {
+
+    if (this.disableCaching) {
+      this.thumbSrc && (this.thumbSrc = this.thumbSrc + `?${Date.now()}`);
+      this.lazySrc = this.lazySrc + `?${Date.now()}`;
+      this.image = this.image + `?${Date.now()}`;
+    }
+
+    this.thumbSrc && (this.thumbSrc = this.thumbSrc + this.thumbIdentifier);
     this.image = this.lazySrc || 'no_image_provided';
-    !this.thumbIdentifier && (this.thumbIdentifier = 'thumb');
     this.oringinalClasses = this.class || '';
     this.classAttr = this.oringinalClasses;
     this.hasLoader
@@ -69,6 +78,7 @@ export class LazyLoadImagesDirective implements AfterViewInit, OnInit {
       !this.isThumbLoaded ? this.loadThumb() : this.loadImage();
       return;
     }
+
     this.loadImage();
   }
 
