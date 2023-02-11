@@ -3,7 +3,7 @@
 A very efficient image lazy loading tool based on user scroll.
 for blazing-fast page loading, with High-resolution images.
 
-### [Demo](https://drive.google.com/file/d/1Od1liVLzJKieo6SSBRCRQHV_FY9vCOiI/view)
+### [Demo](https://drive.google.com/file/d/1Od1liVLzJKieo6SSBRCRQHV_FY9vCOiI/view) | [Live Code Example](https://stackblitz.com/edit/angular-ia9mfp?file=README.md)
 
 **Please note that this version is still under development**
 [Github repo](https://github.com/mBahrawy/ng-lazy-images)
