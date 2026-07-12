@@ -20,10 +20,17 @@ Images are only downloaded when they are about to scroll into view. Until then t
 That's it. The directive owns the `src` attribute and walks the image through
 `thumb → full resolution → (fallback on error)` as the user scrolls.
 
+## Demo
+
+▶️ **[Try it live on StackBlitz](https://stackblitz.com/edit/angular-ia9mfp?file=README.md,src%2Fapp%2Fapp.html)**
+
+![ng-lazy-images demo — images blur-up from thumbnails and load as they scroll into view](https://raw.githubusercontent.com/mBahrawy/ng-lazy-images/main/assets/demo.gif)
+
 ---
 
 ## Table of contents
 
+- [Demo](#demo)
 - [Features](#features)
 - [Version compatibility](#version-compatibility)
 - [Installation](#installation)

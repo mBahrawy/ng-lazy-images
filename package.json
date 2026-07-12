@@ -1,5 +1,5 @@
 {
-  "name": "ng-lazy-images-workspace",
+  "name": "ng-lazy-images",
   "version": "2.0.0",
   "scripts": {
     "ng": "ng",
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "https://github.com/mBahrawy/ng-lazy-images"
   },
-  "private": true,
+  "private": false,
   "engines": {
     "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
   },
