@@ -1,144 +1,274 @@
-import { Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-
 import {
-  AfterViewInit,
+  DestroyRef,
   Directive,
   ElementRef,
-  HostBinding,
-  Input,
+  OnInit,
+  PLATFORM_ID,
+  Renderer2,
+  booleanAttribute,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
 } from '@angular/core';
+import { NG_LAZY_IMAGES_CONFIG } from '../ng-lazy-images.config';
+import { LazyImageObserverService } from '../services/lazy-image-observer.service';
 
+type LazyImageState =
+  | 'idle'
+  | 'observing'
+  | 'loading-thumb'
+  | 'thumb-shown'
+  | 'loading-image'
+  | 'loaded'
+  | 'failed';
+
+type RequestKind = 'thumb' | 'image' | 'fallback';
+
+/**
+ * Defers loading of an `<img>` until it is about to enter the viewport.
+ *
+ * ```html
+ * <img ng-lazy-images
+ *      [lazySrc]="photo.url"
+ *      [thumbSrc]="photo.thumbUrl"
+ *      [errorLazySrc]="'assets/broken.png'" />
+ * ```
+ *
+ * Do not set the native `src` attribute yourself — the directive owns it.
+ * State is reflected through the `thumb-loaded`, `image-loaded`,
+ * `image-failed` and `no-loader` CSS classes.
+ */
 @Directive({
-  selector: 'img[ng-lazy-images]',
+  selector: 'img[ng-lazy-images], img[ngLazyImages]',
   host: {
-    '(error)': 'errorHandler()',
-    '(load)': 'imageLoadedCallback()',
+    '[class.no-loader]': '!hasLoader()',
+    '[class.thumb-loaded]': 'state() === "thumb-shown"',
+    '[class.image-loaded]': 'state() === "loaded"',
+    '[class.image-failed]': 'state() === "failed"',
+    '(load)': 'onLoad()',
+    '(error)': 'onError()',
   },
 })
-export class LazyLoadImagesDirective implements AfterViewInit, OnInit {
-  @HostBinding('attr.src') srcAttr: string | null = null;
-  @HostBinding('attr.class') classAttr: string | undefined;
-  @Input() class!: string;
-  @Input() lazySrc!: string;
-  @Input() errorLazySrc!: string;
-  @Input() thumbSrc!: string;
-  @Input() debug!: boolean;
-  @Input() hasLoader!: boolean;
-  @Input() disableCaching!: boolean;
+export class LazyLoadImagesDirective implements OnInit {
+  /** URL of the full-resolution image. */
+  readonly lazySrc = input.required<string>();
 
-  thumbIdentifier: string = '__this_is_the_thumb';
+  /** Optional low-resolution placeholder shown while `lazySrc` downloads. */
+  readonly thumbSrc = input<string>();
 
-  image!: string;
-  isThumbLoaded: boolean = false;
-  isImageLoaded: boolean = false;
-  oringinalClasses!: string;
+  /** Optional fallback image shown when `lazySrc` fails to load. */
+  readonly errorLazySrc = input<string>();
 
-  config = {
-    delay: 0,
-    root: null,
-    rootMargin: '0px 0px 0px 0px',
-    thresholds: [0],
-    trackVisibility: false,
-  };
+  /** Per-image override of the preload margin, e.g. `'200px 0px'`. */
+  readonly rootMargin = input<string>();
 
-  constructor(
-    private el: ElementRef,
-    @Inject(PLATFORM_ID) private platformId: string
-  ) {}
+  /** Per-image override of the intersection threshold. */
+  readonly threshold = input<number | number[]>();
 
-  ngOnInit(): void {
+  /** Log the directive's lifecycle to the console. */
+  readonly debug = input(false, { transform: booleanAttribute });
 
-    if (this.disableCaching) {
-      this.thumbSrc && (this.thumbSrc = this.thumbSrc + `?${Date.now()}`);
-      this.lazySrc = this.lazySrc + `?${Date.now()}`;
-      this.image = this.image + `?${Date.now()}`;
-    }
+  /**
+   * Marks the image as styled by a loading effect: leaves out the
+   * `no-loader` class so the CSS loading animation applies.
+   */
+  readonly hasLoader = input(false, { transform: booleanAttribute });
 
-    this.thumbSrc && (this.thumbSrc = this.thumbSrc + this.thumbIdentifier);
-    this.image = this.lazySrc || 'no_image_provided';
-    this.oringinalClasses = this.class || '';
-    this.classAttr = this.oringinalClasses;
-    this.hasLoader
-      ? (this.classAttr = this.oringinalClasses)
-      : (this.classAttr = this.oringinalClasses + ' no-loader');
-  }
+  /** Append a cache-busting query parameter to every request. */
+  readonly disableCaching = input(false, { transform: booleanAttribute });
 
-  ngAfterViewInit() {
-    this.canLazyLoad() ? this.lazyLoadImage() : this.imageLoadingController();
-  }
+  /** Skip the viewport check and load immediately (above-the-fold images). */
+  readonly eager = input(false, { transform: booleanAttribute });
 
-  // Check is the client is not robot for better SEO indexing
-  private isBrowserOnly(): boolean {
-    return isPlatformBrowser(this.platformId);
-  }
+  /** Emits the thumb URL once the placeholder has been displayed. */
+  readonly thumbLoaded = output<string>();
 
-  private imageLoadingController() {
-    if (this.thumbSrc) {
-      !this.isThumbLoaded ? this.loadThumb() : this.loadImage();
-      return;
-    }
+  /** Emits the final URL once the full-resolution image has loaded. */
+  readonly imageLoaded = output<string>();
 
-    this.loadImage();
-  }
+  /** Emits the failing URL when the full-resolution image cannot load. */
+  readonly imageError = output<string>();
 
-  private canLazyLoad() {
-    if (!this.isBrowserOnly()) return false;
-    return window && 'IntersectionObserver' in window;
-  }
+  protected readonly state = signal<LazyImageState>('idle');
 
-  private lazyLoadImage() {
-    const obs = new IntersectionObserver((entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          this.debug && console.log(entry);
-          this.imageLoadingController();
-          obs.unobserve(this.el.nativeElement);
+  private readonly el: HTMLImageElement = inject(ElementRef).nativeElement;
+  private readonly renderer = inject(Renderer2);
+  private readonly observerService = inject(LazyImageObserverService);
+  private readonly config = inject(NG_LAZY_IMAGES_CONFIG, { optional: true }) ?? {};
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  private kind: RequestKind = 'image';
+  private cacheBuster: string | null = null;
+  private unobserve: (() => void) | null = null;
+  private lastSources: string | null = null;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.stopObserving());
+
+    // Restart the load cycle whenever the source inputs change after init
+    // (e.g. recycled rows in a virtualized list).
+    effect(() => {
+      const sources = this.sourcesKey();
+      untracked(() => {
+        if (this.lastSources !== null && this.lastSources !== sources) {
+          this.setup();
         }
       });
-    }, this.config);
-    obs.observe(this.el.nativeElement);
+    });
   }
 
-  private loadThumb() {
-    if (this.isThumbLoaded) {
-      this.loadImage();
+  ngOnInit(): void {
+    // A pre-existing src means the image was already rendered — typically by
+    // SSR before hydration. Adopt it instead of re-triggering a download.
+    if (this.isBrowser && this.el.getAttribute('src')) {
+      this.adoptExistingImage();
+      return;
+    }
+    this.setup();
+  }
+
+  private sourcesKey(): string {
+    return `${this.lazySrc()}|${this.thumbSrc() ?? ''}`;
+  }
+
+  private setup(): void {
+    this.lastSources = untracked(() => this.sourcesKey());
+    this.stopObserving();
+    this.state.set('idle');
+    this.cacheBuster = this.disableCaching() ? String(Date.now()) : null;
+
+    if (!this.isBrowser) {
+      // On the server, render the final URL with native lazy loading so
+      // crawlers index the real image.
+      this.renderer.setAttribute(this.el, 'loading', 'lazy');
+      this.setSrc(this.lazySrc(), 'image');
       return;
     }
 
-    this.srcAttr = this.thumbSrc;
+    if (!this.el.hasAttribute('decoding')) {
+      this.renderer.setAttribute(this.el, 'decoding', 'async');
+    }
+
+    if (this.eager()) {
+      this.beginLoad();
+      return;
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      // No IntersectionObserver support: defer to the browser's native
+      // lazy loading instead of loading everything upfront.
+      this.renderer.setAttribute(this.el, 'loading', 'lazy');
+      this.beginLoad();
+      return;
+    }
+
+    this.state.set('observing');
+    this.unobserve = this.observerService.observe(
+      this.el,
+      {
+        rootMargin: this.rootMargin() ?? this.config.rootMargin ?? '0px',
+        threshold: this.threshold() ?? this.config.threshold ?? 0,
+      },
+      () => {
+        this.unobserve = null;
+        this.log('entered viewport', this.lazySrc());
+        this.beginLoad();
+      },
+    );
   }
 
-  private loadImage() {
-    this.srcAttr = this.image;
-    this.isImageLoaded = true;
+  private adoptExistingImage(): void {
+    this.lastSources = this.sourcesKey();
+    this.kind = 'image';
+    if (!this.el.complete) {
+      // Still downloading — the (load)/(error) host listeners take over.
+      this.state.set('loading-image');
+      return;
+    }
+    if (this.el.naturalWidth > 0) {
+      this.state.set('loaded');
+      this.imageLoaded.emit(this.el.currentSrc || this.el.src);
+    } else {
+      this.onError();
+    }
   }
 
-  private isThumb() {
-    return this.srcAttr?.includes(this.thumbIdentifier) || false;
+  private beginLoad(): void {
+    const thumb = this.thumbSrc();
+    if (thumb) {
+      this.state.set('loading-thumb');
+      this.setSrc(thumb, 'thumb');
+    } else {
+      this.state.set('loading-image');
+      this.setSrc(this.lazySrc(), 'image');
+    }
   }
 
-  private imageLoadedCallback() {
-    if (!this.srcAttr) return;
-
-    this.debug &&
-      this.isThumb() &&
-      this.thumbSrc &&
-      console.log('thumb->', this.srcAttr);
-    this.debug && !this.isThumb() && console.log('img->', this.srcAttr);
-
-    this.isThumbLoaded = this.isThumb();
-    this.isThumbLoaded && this.loadImage();
-
-    this.isThumbLoaded &&
-      (this.classAttr = this.oringinalClasses + ' thumb-loaded');
-    this.isImageLoaded &&
-      (this.classAttr = this.oringinalClasses + ' image-loaded');
+  private setSrc(url: string, kind: RequestKind): void {
+    this.kind = kind;
+    const finalUrl =
+      kind !== 'fallback' && this.cacheBuster
+        ? `${url}${url.includes('?') ? '&' : '?'}_ngLazyBust=${this.cacheBuster}`
+        : url;
+    this.renderer.setAttribute(this.el, 'src', finalUrl);
   }
 
-  private errorHandler() {
-    this.debug && console.error('Error loading->', this.srcAttr);
-    this.srcAttr = this.errorLazySrc;
-    this.classAttr = this.oringinalClasses + ' image-failed';
+  private stopObserving(): void {
+    this.unobserve?.();
+    this.unobserve = null;
+  }
+
+  protected onLoad(): void {
+    const loadedSrc = this.el.currentSrc || this.el.src;
+    switch (this.kind) {
+      case 'thumb':
+        this.log('thumb loaded', loadedSrc);
+        this.state.set('thumb-shown');
+        this.thumbLoaded.emit(loadedSrc);
+        this.setSrc(this.lazySrc(), 'image');
+        break;
+      case 'image':
+        this.log('image loaded', loadedSrc);
+        this.state.set('loaded');
+        this.imageLoaded.emit(loadedSrc);
+        break;
+      case 'fallback':
+        this.log('fallback image loaded', loadedSrc);
+        break;
+    }
+  }
+
+  protected onError(): void {
+    const failedSrc = this.el.currentSrc || this.el.src;
+    switch (this.kind) {
+      case 'thumb':
+        this.log('thumb failed, loading full image instead', failedSrc);
+        this.state.set('loading-image');
+        this.setSrc(this.lazySrc(), 'image');
+        break;
+      case 'image': {
+        this.log('image failed', failedSrc);
+        this.state.set('failed');
+        this.imageError.emit(failedSrc);
+        const fallback = this.errorLazySrc() ?? this.config.errorSrc;
+        if (fallback) {
+          this.setSrc(fallback, 'fallback');
+        }
+        break;
+      }
+      case 'fallback':
+        this.log('fallback image failed as well, giving up', failedSrc);
+        break;
+    }
+  }
+
+  private log(message: string, detail: string): void {
+    if (this.debug() || this.config.debug) {
+      console.log(`[ng-lazy-images] ${message}:`, detail);
+    }
   }
 }

@@ -1,15 +1,33 @@
 {
   "name": "ng-lazy-images",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "Blazing-fast, zoneless-ready image lazy loading for Angular. IntersectionObserver-based, with blur-up thumbnails, error fallbacks and SSR support.",
+  "keywords": [
+    "angular",
+    "lazy-load",
+    "lazy-loading",
+    "images",
+    "intersection-observer",
+    "performance",
+    "signals",
+    "zoneless",
+    "ssr",
+    "blur-up",
+    "placeholder"
+  ],
+  "license": "MIT",
   "peerDependencies": {
-    "@angular/common": "^13.3.0",
-    "@angular/core": "^13.3.0"
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/mBahrawy/ng-lazy-images"
   },
-  "description": "A very efficient image lazy loading tool based on user scroll. for blazing-fast page loading, with High-resolution images.",
+  "homepage": "https://github.com/mBahrawy/ng-lazy-images#readme",
+  "bugs": {
+    "url": "https://github.com/mBahrawy/ng-lazy-images/issues"
+  },
   "author": {
     "name": "Eng. Mohamed Bahrawy",
     "email": "bahrawy.dev@gmail.com",
@@ -17,5 +35,6 @@
   },
   "dependencies": {
     "tslib": "^2.3.0"
-  }
+  },
+  "sideEffects": false
 }
